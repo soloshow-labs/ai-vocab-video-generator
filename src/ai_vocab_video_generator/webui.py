@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import secrets
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -100,8 +101,16 @@ from ai_vocab_video_generator.script import (
 )
 from ai_vocab_video_generator.storage import JobStorage
 
+_PUBLIC_DEMO_LLM_PRESETS = (
+    LLMPreset.OPENAI,
+    LLMPreset.DEEPSEEK,
+    LLMPreset.MOONSHOT,
+    LLMPreset.QWEN,
+)
 _PUBLIC_DEMO_MAX_WORDS = 5
 _PUBLIC_DEMO_MAX_MATERIAL_CANDIDATES = 4
+_PUBLIC_DEMO_STORAGE_BUDGET_BYTES = 1024 * MIB
+_PUBLIC_DEMO_MIN_FREE_BYTES = 512 * MIB
 _PUBLIC_DEMO_GENERATION_LOCK = threading.Lock()
 
 _APP_STYLES = """
@@ -338,14 +347,37 @@ def _public_demo_settings(settings: AppSettings) -> AppSettings:
     )
 
 
+def _public_demo_storage_has_capacity(
+    storage_dir: Path,
+    *,
+    budget_bytes: int = _PUBLIC_DEMO_STORAGE_BUDGET_BYTES,
+    minimum_free_bytes: int = _PUBLIC_DEMO_MIN_FREE_BYTES,
+) -> bool:
+    """Bound shared public-demo storage without following untrusted symlinks."""
+    public_root = storage_dir.parent
+    total = 0
+    pending = [public_root]
+    try:
+        while pending:
+            current = pending.pop()
+            for item in current.iterdir():
+                if item.is_symlink():
+                    continue
+                if item.is_dir():
+                    pending.append(item)
+                    continue
+                if item.is_file():
+                    total += item.stat().st_size
+                    if total >= budget_bytes:
+                        return False
+        return shutil.disk_usage(public_root).free >= minimum_free_bytes
+    except OSError:
+        return False
+
+
 def _initialize_public_demo_state() -> None:
     """Clamp expensive controls and remove providers unsafe on a public host."""
-    allowed_presets = {
-        LLMPreset.OPENAI.value,
-        LLMPreset.DEEPSEEK.value,
-        LLMPreset.MOONSHOT.value,
-        LLMPreset.QWEN.value,
-    }
+    allowed_presets = {preset.value for preset in _PUBLIC_DEMO_LLM_PRESETS}
     if str(st.session_state.get("llm_preset")) not in allowed_presets:
         defaults = LLMSettings.for_preset(LLMPreset.OPENAI)
         st.session_state.update(
@@ -1334,7 +1366,11 @@ def _display_result(locale: Locale, *, public_demo: bool = False) -> None:
             st.download_button(
                 _t(locale, "download"),
                 data=contents,
-                file_name=f"{job_id}-{video_path.name}" if job_id else video_path.name,
+                file_name=(
+                    "vocabulary-video.mp4"
+                    if public_demo
+                    else (f"{job_id}-{video_path.name}" if job_id else video_path.name)
+                ),
                 mime="video/mp4",
             )
     except OSError as exc:
@@ -1666,12 +1702,7 @@ def main(*, public_demo: bool = False) -> None:
             current_llm_preset = str(st.session_state.get("llm_preset", LLMPreset.OPENAI.value))
             llm_presets = list(LLMPreset)
             if public_demo:
-                llm_presets = [
-                    LLMPreset.OPENAI,
-                    LLMPreset.DEEPSEEK,
-                    LLMPreset.MOONSHOT,
-                    LLMPreset.QWEN,
-                ]
+                llm_presets = list(_PUBLIC_DEMO_LLM_PRESETS)
             form["llm_preset"] = st.selectbox(
                 _t(locale, "llm_preset"),
                 options=[preset.value for preset in llm_presets],
@@ -2810,12 +2841,21 @@ def main(*, public_demo: bool = False) -> None:
         )
     except (ValueError, ValidationError) as exc:
         blockers.append(_safe_message(exc, locale))
+    public_demo_has_capacity = not public_demo or _public_demo_storage_has_capacity(
+        settings.storage_dir
+    )
+    if not public_demo_has_capacity:
+        blockers.append(_t(locale, "public_demo_storage_full"))
     for blocker in dict.fromkeys(blockers):
         st.info(blocker)
 
     preview_column, generate_column = st.columns([0.3, 0.7])
     with preview_column:
-        preview = st.button(_t(locale, "preview"), use_container_width=True)
+        preview = st.button(
+            _t(locale, "preview"),
+            disabled=not public_demo_has_capacity,
+            use_container_width=True,
+        )
     with generate_column:
         generate = st.button(
             _t(locale, "generate_video"),

@@ -17,7 +17,7 @@ _EN_US = {
     "public_demo_notice": (
         "Public demo: temporary session-isolated storage, up to 5 words per video. "
         "Enter your own provider keys and download the result before leaving; keys and "
-        "generated files are not retained after the session or server restarts."
+        "generated files are not durable and may disappear at any time."
     ),
     "public_demo_credentials_help": (
         "This public demo never uses the operator's API keys. Keys entered here stay only "
@@ -29,6 +29,9 @@ _EN_US = {
     ),
     "public_demo_word_limit": "The public demo supports at most {limit} words per video.",
     "public_demo_busy": ("Another video is being generated. Please wait a moment and try again."),
+    "public_demo_storage_full": (
+        "Temporary storage is currently at capacity. Please try again after the app restarts."
+    ),
     "public_demo_result_help": (
         "This result is temporary. Download the MP4 before closing the page."
     ),
@@ -583,8 +586,8 @@ _ZH_CN = {
     "caption": "一键生成带朗读的单词学习视频。",
     "public_demo_notice": (
         "公开体验版：每个浏览器会话使用独立的临时存储，每段视频最多 5 个单词。"
-        "请填写你自己的服务商密钥，并在离开前下载结果；会话结束或服务器重启后，"
-        "密钥和生成文件都不会保留。"
+        "请填写你自己的服务商密钥，并在离开前下载结果；密钥仅保留在当前会话，"
+        "生成文件不提供持久化保证，随时可能消失。"
     ),
     "public_demo_credentials_help": (
         "公开体验版不会使用部署者的 API 密钥。你在这里填写的密钥只保留在当前浏览器"
@@ -595,6 +598,7 @@ _ZH_CN = {
     ),
     "public_demo_word_limit": "公开体验版每段视频最多支持 {limit} 个单词。",
     "public_demo_busy": "当前已有视频正在生成，请稍等片刻后重试。",
+    "public_demo_storage_full": "临时存储空间当前已达上限，请等待应用重启后再试。",
     "public_demo_result_help": "该结果仅临时保留，请在关闭页面前下载 MP4。",
     "language": "语言",
     "basic_settings": "基础设置 (:blue[点击展开])",

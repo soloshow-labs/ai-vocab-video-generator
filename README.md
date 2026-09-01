@@ -173,9 +173,11 @@ uses session-isolated temporary storage, ignores every server-side provider key,
 accepts at most five words per video and four remote candidates per word, and
 disables Ollama, custom endpoints, voice transcription, task history, and task
 regeneration. Visitors enter their own provider keys for the current browser
-session. Generated files disappear when the session or cloud instance ends, so
-download the MP4 before leaving. `packages.txt` installs FFmpeg and Noto CJK
-fonts on the cloud host.
+session. Generated files are not durable and may disappear at any time, so
+download the MP4 before leaving. The demo stops accepting preview and generation
+requests when its temporary storage reaches 1 GiB or the host has less than
+512 MiB free; rebooting the app resets its temporary environment. `packages.txt`
+installs FFmpeg and Noto CJK fonts on the cloud host.
 
 ### 4. Make a first video
 

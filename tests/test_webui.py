@@ -122,6 +122,105 @@ def test_public_demo_is_session_isolated_and_never_uses_operator_keys(monkeypatc
     assert next(button for button in first.button if button.label == "生成视频").disabled
 
 
+def _ready_public_demo(monkeypatch, tmp_path: Path) -> AppTest:
+    _without_credentials(monkeypatch)
+    monkeypatch.setattr(webui_module.tempfile, "gettempdir", lambda: str(tmp_path / "cloud-tmp"))
+    _patch_generation_fakes(monkeypatch)
+    monkeypatch.setattr(webui_module, "GenerationPipeline", _FakePipeline)
+    background = _image(tmp_path / "background.png", "white")
+    app = AppTest.from_file(str(PUBLIC_WEBUI))
+    for key, value in {
+        "script_text": "苹果\napple\n/ˈæp.əl/",
+        "auto_phonetic": False,
+        "manual_phonetic": True,
+        "loaded_background_path": str(background),
+        "material_enabled": False,
+    }.items():
+        app.session_state[key] = value
+    app.run(timeout=15)
+    assert not app.exception
+    assert not next(button for button in app.button if button.label == "生成视频").disabled
+    return app
+
+
+def test_public_demo_generation_lock_blocks_contention_and_releases_after_success(
+    monkeypatch, tmp_path: Path
+) -> None:
+    app = _ready_public_demo(monkeypatch, tmp_path)
+    lock = webui_module._PUBLIC_DEMO_GENERATION_LOCK
+    assert lock.acquire(blocking=False)
+    try:
+        next(button for button in app.button if button.label == "生成视频").click().run(timeout=15)
+    finally:
+        lock.release()
+
+    assert not app.exception
+    assert _FakePipeline.run_requests == []
+    assert any("当前已有视频正在生成" in str(item.value) for item in app.warning)
+
+    next(button for button in app.button if button.label == "生成视频").click().run(timeout=15)
+
+    assert not app.exception
+    assert len(_FakePipeline.run_requests) == 1
+    assert lock.acquire(blocking=False)
+    lock.release()
+
+
+def test_public_demo_generation_lock_releases_after_failure(monkeypatch, tmp_path: Path) -> None:
+    class FailingPipeline(_FakePipeline):
+        def run(self, request: GenerationRequest, on_progress: Any = None) -> GenerationResult:
+            del request, on_progress
+            raise ProviderError("Synthetic generation failure.")
+
+    app = _ready_public_demo(monkeypatch, tmp_path)
+    monkeypatch.setattr(pipeline_module, "GenerationPipeline", FailingPipeline)
+    monkeypatch.setattr(webui_module, "GenerationPipeline", FailingPipeline)
+
+    next(button for button in app.button if button.label == "生成视频").click().run(timeout=15)
+
+    assert not app.exception
+    assert any("Synthetic generation failure" in str(item.value) for item in app.error)
+    lock = webui_module._PUBLIC_DEMO_GENERATION_LOCK
+    assert lock.acquire(blocking=False)
+    lock.release()
+
+
+def test_public_demo_storage_budget_blocks_new_work(tmp_path: Path) -> None:
+    storage_dir = tmp_path / "aivvg-public-demo" / ("a" * 32)
+    storage_dir.mkdir(parents=True)
+    (storage_dir / "result.mp4").write_bytes(b"1234")
+
+    assert webui_module._public_demo_storage_has_capacity(
+        storage_dir, budget_bytes=5, minimum_free_bytes=0
+    )
+    assert not webui_module._public_demo_storage_has_capacity(
+        storage_dir, budget_bytes=4, minimum_free_bytes=0
+    )
+
+
+def test_public_demo_download_hides_the_internal_task_id(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(webui_module.tempfile, "gettempdir", lambda: str(tmp_path / "cloud-tmp"))
+    downloads: list[tuple[str, bytes]] = []
+    original_download = webui_module.st.download_button
+
+    def capture_download(*args: Any, **kwargs: Any) -> Any:
+        downloads.append((kwargs["file_name"], kwargs["data"]))
+        return original_download(*args, **kwargs)
+
+    monkeypatch.setattr(webui_module.st, "download_button", capture_download)
+    video = tmp_path / "video-0001.mp4"
+    video.write_bytes(b"public-result")
+    app = AppTest.from_file(str(PUBLIC_WEBUI))
+    app.session_state["last_video_path"] = str(video)
+    app.session_state["last_job_id"] = "a" * 32
+
+    app.run(timeout=15)
+
+    assert not app.exception
+    assert downloads == [("vocabulary-video.mp4", b"public-result")]
+    assert not any(item.value == "a" * 32 for item in app.code)
+
+
 @pytest.mark.parametrize(
     ("stage", "zh_text", "en_text"),
     [
