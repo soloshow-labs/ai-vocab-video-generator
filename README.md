@@ -11,6 +11,10 @@ Maintained by [SoloShow Labs](https://github.com/soloshow-labs).
 
 WeChat Official Account: 一人独角show
 
+> This guide describes the **full local application** unless a section is
+> explicitly labeled “Restricted public demo.” The hosted demo is only a quick
+> way to try the project and is not a replacement for local installation.
+
 ## What it does
 
 - Builds a vocabulary list from a topic, or accepts an editable list written as
@@ -67,7 +71,7 @@ ffmpeg -version
 ffprobe -version
 ```
 
-## Quick start
+## Local installation and use (recommended)
 
 Clone the repository, then run all commands from the project directory:
 
@@ -156,28 +160,6 @@ reverse proxy and separate per-user storage and credentials.
 The interface supports `zh-CN` and `en-US` and opens in Simplified Chinese. Use
 the language selector at the top of the page to switch languages without
 changing saved media or rendering settings.
-
-### Optional: deploy the free public demo
-
-[Streamlit Community Cloud](https://share.streamlit.io) can host the restricted
-public demo at no hosting cost:
-
-1. Sign in with GitHub and choose **Create app**.
-2. Select `soloshow-labs/ai-vocab-video-generator` and the deployment branch.
-3. Set the entrypoint to `streamlit_app.py` and Python to `3.12`.
-4. Choose an available `*.streamlit.app` subdomain and deploy. No application
-   secrets are required.
-
-The cloud entrypoint intentionally differs from the trusted local launcher. It
-uses session-isolated temporary storage, ignores every server-side provider key,
-accepts at most five words per video and four remote candidates per word, and
-disables Ollama, custom endpoints, voice transcription, task history, and task
-regeneration. Visitors enter their own provider keys for the current browser
-session. Generated files are not durable and may disappear at any time, so
-download the MP4 before leaving. The demo stops accepting preview and generation
-requests when its temporary storage reaches 1 GiB or the host has less than
-512 MiB free; rebooting the app resets its temporary environment. `packages.txt`
-installs FFmpeg and Noto CJK fonts on the cloud host.
 
 ### 4. Make a first video
 
@@ -638,6 +620,37 @@ providers may be used, edited, synchronized with audio, published, and
 redistributed for your intended purpose. Provider availability is not a license
 grant. No fonts, music, demo media, or provider downloads are bundled with the
 repository.
+
+## Restricted public demo
+
+The hosted demo is meant only to let visitors try the core workflow. For regular
+video production, persistent jobs, local models, and the complete set of advanced
+controls, use the full local application described above.
+
+| Area | Full local application | Hosted public demo |
+| --- | --- | --- |
+| Intended use | Ongoing personal use and full video production | Temporary evaluation of the core workflow |
+| Entrypoint | `webui.sh`, `webui.bat`, or the local Streamlit command | `streamlit_app.py` |
+| Jobs and files | Persist in the local `storage/` directory and support regeneration | Session-isolated temporary files with no durability guarantee |
+| API keys | May come from the local `.env` or the current UI session | Must be entered by each visitor for the current browser session; operator keys are ignored |
+| LLM providers | Cloud providers, Ollama, and custom compatible endpoints | Built-in cloud-provider presets only |
+| Word and image limits | Up to 50 words and 20 image candidates per word | Up to 5 words and 4 image candidates per word |
+| Local features | Voice transcription, job history, and regeneration | Voice transcription, job history, and regeneration are unavailable |
+
+Project maintainers can deploy this restricted demo at no hosting cost with
+[Streamlit Community Cloud](https://share.streamlit.io):
+
+1. Sign in with GitHub and choose **Create app**.
+2. Select `soloshow-labs/ai-vocab-video-generator` and the deployment branch.
+3. Set the entrypoint to `streamlit_app.py` and Python to `3.12`.
+4. Choose an available `*.streamlit.app` subdomain and deploy with **Secrets left empty**.
+
+Visitors must enter their own provider keys and should download the MP4 before
+leaving. Generated files may disappear at any time. The demo pauses new preview
+and generation requests when temporary storage reaches 1 GiB or the host has
+less than 512 MiB free, until the app restarts. The repository-level
+`packages.txt` is used only to install FFmpeg and Noto CJK fonts on the cloud
+host; it is not part of local installation.
 
 ## Development
 
