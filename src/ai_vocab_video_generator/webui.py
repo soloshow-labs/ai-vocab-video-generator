@@ -4,8 +4,11 @@ import hashlib
 import json
 import re
 import secrets
+import shutil
 import subprocess
 import sys
+import tempfile
+import threading
 from collections.abc import Sequence
 from contextlib import suppress
 from datetime import datetime
@@ -20,7 +23,7 @@ from pydantic import SecretStr, ValidationError
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from ai_vocab_video_generator import __version__
-from ai_vocab_video_generator.config import AppSettings, LLMPreset, LLMSettings
+from ai_vocab_video_generator.config import AppSettings, LLMPreset, LLMSettings, SecretSettings
 from ai_vocab_video_generator.domain import (
     MAX_SCRIPT_LENGTH,
     MAX_TOPIC_LENGTH,
@@ -97,6 +100,18 @@ from ai_vocab_video_generator.script import (
     serialize_vocabulary_script,
 )
 from ai_vocab_video_generator.storage import JobStorage
+
+_PUBLIC_DEMO_LLM_PRESETS = (
+    LLMPreset.OPENAI,
+    LLMPreset.DEEPSEEK,
+    LLMPreset.MOONSHOT,
+    LLMPreset.QWEN,
+)
+_PUBLIC_DEMO_MAX_WORDS = 5
+_PUBLIC_DEMO_MAX_MATERIAL_CANDIDATES = 4
+_PUBLIC_DEMO_STORAGE_BUDGET_BYTES = 1024 * MIB
+_PUBLIC_DEMO_MIN_FREE_BYTES = 512 * MIB
+_PUBLIC_DEMO_GENERATION_LOCK = threading.Lock()
 
 _APP_STYLES = """
 <style>
@@ -312,6 +327,77 @@ def _initialize_state(settings: AppSettings) -> None:
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
     _normalize_translated_widget_state()
+
+
+def _public_demo_settings(settings: AppSettings) -> AppSettings:
+    """Isolate one public browser session and never inherit operator credentials."""
+    session_id = str(st.session_state.setdefault("_public_demo_session_id", uuid4().hex))
+    if not re.fullmatch(r"[0-9a-f]{32}", session_id):
+        session_id = uuid4().hex
+        st.session_state["_public_demo_session_id"] = session_id
+    storage_dir = Path(tempfile.gettempdir()) / "aivvg-public-demo" / session_id
+    ensure_private_directory(storage_dir)
+    st.session_state["_public_demo_storage_dir"] = str(storage_dir)
+    return settings.model_copy(
+        update={
+            "storage_dir": storage_dir,
+            "model_cache_dir": storage_dir / "model_cache",
+            "secrets": SecretSettings.empty(),
+        }
+    )
+
+
+def _public_demo_storage_has_capacity(
+    storage_dir: Path,
+    *,
+    budget_bytes: int = _PUBLIC_DEMO_STORAGE_BUDGET_BYTES,
+    minimum_free_bytes: int = _PUBLIC_DEMO_MIN_FREE_BYTES,
+) -> bool:
+    """Bound shared public-demo storage without following untrusted symlinks."""
+    public_root = storage_dir.parent
+    total = 0
+    pending = [public_root]
+    try:
+        while pending:
+            current = pending.pop()
+            for item in current.iterdir():
+                if item.is_symlink():
+                    continue
+                if item.is_dir():
+                    pending.append(item)
+                    continue
+                if item.is_file():
+                    total += item.stat().st_size
+                    if total >= budget_bytes:
+                        return False
+        return shutil.disk_usage(public_root).free >= minimum_free_bytes
+    except OSError:
+        return False
+
+
+def _initialize_public_demo_state() -> None:
+    """Clamp expensive controls and remove providers unsafe on a public host."""
+    allowed_presets = {preset.value for preset in _PUBLIC_DEMO_LLM_PRESETS}
+    if str(st.session_state.get("llm_preset")) not in allowed_presets:
+        defaults = LLMSettings.for_preset(LLMPreset.OPENAI)
+        st.session_state.update(
+            {
+                "llm_preset": LLMPreset.OPENAI.value,
+                "active_llm_preset": LLMPreset.OPENAI.value,
+                "active_llm_credential_slot": LLMPreset.OPENAI.value,
+                "llm_key_input": "",
+                "llm_base_url": defaults.base_url,
+                "llm_model": defaults.model,
+            }
+        )
+    st.session_state["word_count"] = min(
+        int(st.session_state.get("word_count", _PUBLIC_DEMO_MAX_WORDS)),
+        _PUBLIC_DEMO_MAX_WORDS,
+    )
+    st.session_state["material_pool_size"] = min(
+        int(st.session_state.get("material_pool_size", _PUBLIC_DEMO_MAX_MATERIAL_CANDIDATES)),
+        _PUBLIC_DEMO_MAX_MATERIAL_CANDIDATES,
+    )
 
 
 def _on_llm_preset_changed() -> None:
@@ -1253,7 +1339,7 @@ def _card_preview_key(
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
-def _display_result(locale: Locale) -> None:
+def _display_result(locale: Locale, *, public_demo: bool = False) -> None:
     last_video = st.session_state.get("last_video_path")
     if not last_video or not Path(str(last_video)).is_file():
         return
@@ -1262,10 +1348,12 @@ def _display_result(locale: Locale) -> None:
         contents = video_path.read_bytes()
         st.subheader(_t(locale, "result"))
         job_id = str(st.session_state.get("last_job_id", ""))
-        if job_id:
+        if job_id and not public_demo:
             st.caption(_t(locale, "task_id"))
             st.code(job_id, language=None)
             st.caption(_t(locale, "result_task_help"))
+        elif public_demo:
+            st.caption(_t(locale, "public_demo_result_help"))
         st.caption(f"{_t(locale, 'result_version')} · {video_path.name}")
         preview_width = _result_preview_width(
             st.session_state.get(
@@ -1278,7 +1366,11 @@ def _display_result(locale: Locale) -> None:
             st.download_button(
                 _t(locale, "download"),
                 data=contents,
-                file_name=f"{job_id}-{video_path.name}" if job_id else video_path.name,
+                file_name=(
+                    "vocabulary-video.mp4"
+                    if public_demo
+                    else (f"{job_id}-{video_path.name}" if job_id else video_path.name)
+                ),
                 mime="video/mp4",
             )
     except OSError as exc:
@@ -1572,11 +1664,15 @@ def _display_regeneration(settings: AppSettings, locale: Locale) -> None:
                 _open_folder(task_directory)
 
 
-def main() -> None:
+def main(*, public_demo: bool = False) -> None:
     st.set_page_config(page_title="AI Vocab Video Generator", page_icon="🎬", layout="wide")
     st.markdown(_APP_STYLES, unsafe_allow_html=True)
     settings = AppSettings.from_toml()
+    if public_demo:
+        settings = _public_demo_settings(settings)
     _initialize_state(settings)
+    if public_demo:
+        _initialize_public_demo_state()
     pending_request = st.session_state.pop("pending_loaded_request", None)
     pending_job_id = st.session_state.pop("pending_loaded_job_id", None)
     if isinstance(pending_request, GenerationRequest) and isinstance(pending_job_id, str):
@@ -1584,10 +1680,15 @@ def main() -> None:
     locale = Locale(str(st.session_state.get("locale", DEFAULT_LOCALE.value)))
     st.title(f"{_t(locale, 'title')} v{__version__}")
     st.caption(_t(locale, "caption"))
+    if public_demo:
+        st.info(_t(locale, "public_demo_notice"))
 
     form: dict[str, Any] = {}
     with st.expander(_t(locale, "basic_settings"), expanded=False):
-        _field_help(locale, "basic_settings")
+        if public_demo:
+            st.caption(_t(locale, "public_demo_credentials_help"))
+        else:
+            _field_help(locale, "basic_settings")
         language_column, llm_column, provider_column = st.columns(3)
         with language_column:
             st.selectbox(
@@ -1599,9 +1700,12 @@ def main() -> None:
             )
         with llm_column:
             current_llm_preset = str(st.session_state.get("llm_preset", LLMPreset.OPENAI.value))
+            llm_presets = list(LLMPreset)
+            if public_demo:
+                llm_presets = list(_PUBLIC_DEMO_LLM_PRESETS)
             form["llm_preset"] = st.selectbox(
                 _t(locale, "llm_preset"),
-                options=[preset.value for preset in LLMPreset],
+                options=[preset.value for preset in llm_presets],
                 format_func=lambda value: {
                     "openai": "OpenAI",
                     "deepseek": "DeepSeek",
@@ -1614,6 +1718,10 @@ def main() -> None:
                 on_change=_on_llm_preset_changed,
                 help=_t(locale, f"llm_{current_llm_preset}_help"),
             )
+            if public_demo:
+                fixed_llm = LLMSettings.for_preset(LLMPreset(str(form["llm_preset"])))
+                st.session_state["llm_base_url"] = fixed_llm.base_url
+                st.session_state["llm_model"] = fixed_llm.model
             st.info(_t(locale, f"llm_{form['llm_preset']}_setup"))
             form["llm_key"] = st.text_input(
                 _t(locale, f"api_key_{form['llm_preset']}"),
@@ -1626,8 +1734,11 @@ def main() -> None:
                 _t(locale, "base_url"),
                 key="llm_base_url",
                 on_change=_on_llm_base_url_changed,
+                disabled=public_demo,
             )
-            form["llm_model"] = st.text_input(_t(locale, "model"), key="llm_model")
+            form["llm_model"] = st.text_input(
+                _t(locale, "model"), key="llm_model", disabled=public_demo
+            )
             if st.button(
                 _t(locale, "test_llm_connection"),
                 key="test_llm_connection",
@@ -1702,7 +1813,7 @@ def main() -> None:
         with count_column:
             word_count_arguments: dict[str, Any] = {
                 "min_value": 1,
-                "max_value": 50,
+                "max_value": _PUBLIC_DEMO_MAX_WORDS if public_demo else 50,
                 "key": "word_count",
                 "help": _t(locale, "word_count_help"),
             }
@@ -1738,18 +1849,21 @@ def main() -> None:
                     finally:
                         _close_provider(provider)
         with voice_column:
-            recording = st.audio_input(_t(locale, "record_topic"), key="topic_recording")
-            if recording is not None and st.button(
-                _t(locale, "transcribe"), use_container_width=True
-            ):
-                try:
-                    audio_path = _save_upload(recording, settings.storage_dir, ".wav")
-                    transcription = FunASRTranscriptionProvider(
-                        model_cache=settings.model_cache_dir
-                    ).transcribe(audio_path)
-                    st.session_state["topic"] = transcription
-                except (ApplicationError, OSError, ValueError) as exc:
-                    st.error(_safe_message(exc, locale))
+            if public_demo:
+                st.caption(_t(locale, "public_demo_asr_disabled"))
+            else:
+                recording = st.audio_input(_t(locale, "record_topic"), key="topic_recording")
+                if recording is not None and st.button(
+                    _t(locale, "transcribe"), use_container_width=True
+                ):
+                    try:
+                        audio_path = _save_upload(recording, settings.storage_dir, ".wav")
+                        transcription = FunASRTranscriptionProvider(
+                            model_cache=settings.model_cache_dir
+                        ).transcribe(audio_path)
+                        st.session_state["topic"] = transcription
+                    except (ApplicationError, OSError, ValueError) as exc:
+                        st.error(_safe_message(exc, locale))
 
         _panel_heading(locale, "phonetic_settings")
         phonetic_columns = st.columns(2)
@@ -2066,7 +2180,7 @@ def main() -> None:
                     st.number_input(
                         _t(locale, "candidate_pool_size"),
                         min_value=1,
-                        max_value=20,
+                        max_value=(_PUBLIC_DEMO_MAX_MATERIAL_CANDIDATES if public_demo else 20),
                         step=1,
                         key="material_pool_size_widget",
                         on_change=_remember_conditional_value,
@@ -2680,6 +2794,8 @@ def main() -> None:
         _invalidate_card_preview()
 
     blockers: list[str] = []
+    if public_demo and len(entries) > _PUBLIC_DEMO_MAX_WORDS:
+        blockers.append(_t(locale, "public_demo_word_limit").format(limit=_PUBLIC_DEMO_MAX_WORDS))
     if not entries and not str(form["topic"]).strip():
         blockers.append(_t(locale, "missing_content"))
     if background_upload is None and effective_background is None:
@@ -2725,12 +2841,21 @@ def main() -> None:
         )
     except (ValueError, ValidationError) as exc:
         blockers.append(_safe_message(exc, locale))
+    public_demo_has_capacity = not public_demo or _public_demo_storage_has_capacity(
+        settings.storage_dir
+    )
+    if not public_demo_has_capacity:
+        blockers.append(_t(locale, "public_demo_storage_full"))
     for blocker in dict.fromkeys(blockers):
         st.info(blocker)
 
     preview_column, generate_column = st.columns([0.3, 0.7])
     with preview_column:
-        preview = st.button(_t(locale, "preview"), use_container_width=True)
+        preview = st.button(
+            _t(locale, "preview"),
+            disabled=not public_demo_has_capacity,
+            use_container_width=True,
+        )
     with generate_column:
         generate = st.button(
             _t(locale, "generate_video"),
@@ -2738,6 +2863,12 @@ def main() -> None:
             disabled=bool(blockers),
             use_container_width=True,
         )
+    generation_slot_acquired = False
+    if generate and public_demo:
+        generation_slot_acquired = _PUBLIC_DEMO_GENERATION_LOCK.acquire(blocking=False)
+        if not generation_slot_acquired:
+            st.warning(_t(locale, "public_demo_busy"))
+            generate = False
     if generate:
         try:
             background_path = (
@@ -2843,11 +2974,15 @@ def main() -> None:
             st.success(_t(locale, "generation_complete"))
         except (ApplicationError, OSError, ValidationError, ValueError) as exc:
             st.error(_safe_message(exc, locale))
+        finally:
+            if generation_slot_acquired:
+                _PUBLIC_DEMO_GENERATION_LOCK.release()
 
     result_container = st.container()
-    _display_regeneration(settings, locale)
+    if not public_demo:
+        _display_regeneration(settings, locale)
     with result_container:
-        _display_result(locale)
+        _display_result(locale, public_demo=public_demo)
 
     if preview:
         try:

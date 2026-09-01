@@ -17,6 +17,17 @@ def test_secret_settings_do_not_reveal_values(monkeypatch) -> None:
     assert secret not in settings.model_dump_json()
 
 
+def test_empty_secret_settings_ignore_environment_credentials(monkeypatch) -> None:
+    monkeypatch.setenv("AIVVG_OPENAI_API_KEY", "operator-secret")
+    monkeypatch.setenv("AIVVG_PEXELS_API_KEY", "operator-image-secret")
+
+    settings = SecretSettings.empty()
+
+    assert settings.values() == ()
+    assert settings.openai_api_key is None
+    assert settings.pexels_api_key is None
+
+
 def test_llm_provider_secrets_are_independent(monkeypatch) -> None:
     values = {
         LLMPreset.OPENAI: "openai-session-secret",

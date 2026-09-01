@@ -106,10 +106,23 @@ def test_launchers_and_documentation_keep_the_local_webui_on_loopback() -> None:
 
     assert shell_launcher.index('"$@"') < shell_launcher.index("--server.address 127.0.0.1")
     assert windows_launcher.index("%*") < windows_launcher.index("--server.address 127.0.0.1")
-    assert 'address = "127.0.0.1"' in streamlit_config
+    assert "address" not in streamlit_config
     assert "maxUploadSize = 128" in streamlit_config
     assert "--server.address 127.0.0.1" in readmes
     assert "authenticated" in readmes
+
+
+def test_public_demo_has_a_cloud_entrypoint_and_system_dependencies() -> None:
+    entrypoint = (ROOT / "streamlit_app.py").read_text(encoding="utf-8")
+    packages = (ROOT / "packages.txt").read_text(encoding="utf-8").splitlines()
+    readmes = "\n".join(
+        (ROOT / name).read_text(encoding="utf-8") for name in ("README.md", "README.zh.md")
+    )
+
+    assert "main(public_demo=True)" in entrypoint
+    assert packages == ["ffmpeg", "fonts-noto-cjk"]
+    assert "streamlit_app.py" in readmes
+    assert "Streamlit Community Cloud" in readmes
 
 
 def _write_sine_wav(
@@ -419,7 +432,11 @@ def test_public_package_and_git_metadata_use_project_identity() -> None:
     )
     emails = [line.strip() for line in result.stdout.splitlines() if line.strip()]
     assert emails
-    assert all(email.endswith("@users.noreply.github.com") for email in emails)
+    allowed_automation_emails = {"noreply@github.com"}
+    assert all(
+        email.endswith("@users.noreply.github.com") or email in allowed_automation_emails
+        for email in emails
+    )
 
 
 def test_public_docs_cover_the_complete_bilingual_media_workflow() -> None:
@@ -449,6 +466,41 @@ def test_public_docs_cover_the_complete_bilingual_media_workflow() -> None:
     assert "Only schema version 3 is supported" in architecture
     assert "Dictionary-backed phonetics" in roadmap
     assert "LLM fallback" in roadmap
+
+
+@pytest.mark.parametrize(
+    ("filename", "local_heading", "first_video_heading", "demo_heading", "boundary_text"),
+    [
+        (
+            "README.md",
+            "## Local installation and use (recommended)",
+            "### 4. Make a first video",
+            "## Restricted public demo",
+            "not a replacement for local installation",
+        ),
+        (
+            "README.zh.md",
+            "## 本地安装与使用\uff08推荐\uff09",
+            "### 4. 生成第一个视频",
+            "## 在线公开演示\uff08受限版本\uff09",
+            "不能替代本地安装",
+        ),
+    ],
+)
+def test_readmes_keep_local_workflow_primary_and_public_demo_separate(
+    filename: str,
+    local_heading: str,
+    first_video_heading: str,
+    demo_heading: str,
+    boundary_text: str,
+) -> None:
+    readme = (ROOT / filename).read_text(encoding="utf-8")
+
+    assert boundary_text in readme
+    local_position = readme.index(local_heading)
+    first_video_position = readme.index(first_video_heading)
+    demo_position = readme.index(demo_heading)
+    assert local_position < first_video_position < demo_position
 
 
 def test_real_local_media_job_regenerates_to_a_safe_schema_v3_mp4(tmp_path: Path) -> None:

@@ -68,7 +68,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Run mypy
-        run: uv run mypy src
+        run: uv run mypy --python-version "${{ matrix.python-version }}" src
 
       - name: Check shell launcher
         run: shellcheck webui.sh

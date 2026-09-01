@@ -27,6 +27,19 @@ class SecretSettings(BaseSettings):
     pexels_api_key: SecretStr | None = None
     pixabay_api_key: SecretStr | None = None
 
+    @classmethod
+    def empty(cls) -> "SecretSettings":
+        """Return settings that ignore every process and dotenv credential."""
+        return cls(
+            openai_api_key=None,
+            deepseek_api_key=None,
+            moonshot_api_key=None,
+            qwen_api_key=None,
+            custom_api_key=None,
+            pexels_api_key=None,
+            pixabay_api_key=None,
+        )
+
     def values(self) -> tuple[str, ...]:
         configured = (
             self.openai_api_key,
