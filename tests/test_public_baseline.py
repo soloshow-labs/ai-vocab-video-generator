@@ -441,6 +441,7 @@ def test_public_package_and_git_metadata_use_project_identity() -> None:
 
 def test_public_docs_cover_the_complete_bilingual_media_workflow() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme_zh = (ROOT / "README.zh.md").read_text(encoding="utf-8")
     notice = (ROOT / "NOTICE.md").read_text(encoding="utf-8")
     architecture = (ROOT / "docs/architecture.md").read_text(encoding="utf-8")
     roadmap = (ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
@@ -457,10 +458,12 @@ def test_public_docs_cover_the_complete_bilingual_media_workflow() -> None:
         "Only schema version 3 is supported",
         "saved job inputs",
         "composition is rendered again",
-        "中文快速说明",
+        "Quick reference",
     }
 
     assert sorted(phrase for phrase in required_readme_phrases if phrase not in readme) == []
+    assert "## 中文快速说明" not in readme
+    assert "## 常用规则速查" in readme_zh
     assert "local video" in notice.lower()
     assert "background music" in notice.lower()
     assert "Only schema version 3 is supported" in architecture

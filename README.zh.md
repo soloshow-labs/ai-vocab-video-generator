@@ -483,7 +483,7 @@ SHA-256。每次重新生成都会再次执行合成。问题声音设置会使�
 失效。每次成功合成都会获得下一个编号的 MP4，永远不会覆盖之前完成的视频。
 重新生成替换素材支持的本地图片和视频格式与首次上传相同。
 
-## 快速说明
+## 常用规则速查
 
 - 界面默认使用简体中文（`zh-CN`），也可切换为英文（`en-US`）。
 - 背景图支持 PNG、JPG/JPEG、WebP；本地单词素材还支持 MP4、MOV、M4V、WebM，
@@ -557,6 +557,13 @@ Noto Sans CJK。
 
 项目维护者可以使用 [Streamlit Community Cloud](https://share.streamlit.io) 免费部署
 这个受限演示：
+
+如果仓库属于 GitHub 组织，组织所有者需要先
+[为 Streamlit 授予组织访问权限](https://docs.streamlit.io/deploy/streamlit-community-cloud/get-started/connect-your-github-account#organization-access)，
+并在组织设置中
+[允许使用部署密钥](https://docs.github.com/en/organizations/managing-organization-settings/restricting-deploy-keys-in-your-organization)。
+GitHub 新组织默认禁止创建新的部署密钥。应用连接成功后，请到仓库的
+**Settings → Deploy keys** 检查 Streamlit 创建的密钥，并确认它没有写权限。
 
 1. 使用 GitHub 登录并选择 **Create app**。
 2. 选择 `soloshow-labs/ai-vocab-video-generator` 和用于部署的分支。
