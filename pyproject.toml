@@ -32,7 +32,7 @@ dependencies = [
 [project.optional-dependencies]
 asr = [
   "funasr>=1.2,<2",
-  "torch==2.11.0",
+  "torch==2.13.0",
   "torchaudio==2.11.0",
 ]
 
