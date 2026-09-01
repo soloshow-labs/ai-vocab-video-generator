@@ -106,10 +106,23 @@ def test_launchers_and_documentation_keep_the_local_webui_on_loopback() -> None:
 
     assert shell_launcher.index('"$@"') < shell_launcher.index("--server.address 127.0.0.1")
     assert windows_launcher.index("%*") < windows_launcher.index("--server.address 127.0.0.1")
-    assert 'address = "127.0.0.1"' in streamlit_config
+    assert "address" not in streamlit_config
     assert "maxUploadSize = 128" in streamlit_config
     assert "--server.address 127.0.0.1" in readmes
     assert "authenticated" in readmes
+
+
+def test_public_demo_has_a_cloud_entrypoint_and_system_dependencies() -> None:
+    entrypoint = (ROOT / "streamlit_app.py").read_text(encoding="utf-8")
+    packages = (ROOT / "packages.txt").read_text(encoding="utf-8").splitlines()
+    readmes = "\n".join(
+        (ROOT / name).read_text(encoding="utf-8") for name in ("README.md", "README.zh.md")
+    )
+
+    assert "main(public_demo=True)" in entrypoint
+    assert packages == ["ffmpeg", "fonts-noto-cjk"]
+    assert "streamlit_app.py" in readmes
+    assert "Streamlit Community Cloud" in readmes
 
 
 def _write_sine_wav(

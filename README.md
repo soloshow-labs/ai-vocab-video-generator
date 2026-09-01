@@ -148,14 +148,34 @@ uv run --frozen streamlit run --server.address 127.0.0.1 src/ai_vocab_video_gene
 Open <http://localhost:8501> if the browser does not open automatically. Stop
 the server with `Ctrl+C` in the terminal.
 
-The bundled launchers and Streamlit configuration bind to `127.0.0.1`. This is
-a trusted single-user local application and has no built-in authentication.
+The bundled local launchers bind to `127.0.0.1`. This is a trusted single-user
+local application and has no built-in authentication.
 Do not expose it to a LAN or the public internet without an authenticated
 reverse proxy and separate per-user storage and credentials.
 
 The interface supports `zh-CN` and `en-US` and opens in Simplified Chinese. Use
 the language selector at the top of the page to switch languages without
 changing saved media or rendering settings.
+
+### Optional: deploy the free public demo
+
+[Streamlit Community Cloud](https://share.streamlit.io) can host the restricted
+public demo at no hosting cost:
+
+1. Sign in with GitHub and choose **Create app**.
+2. Select `soloshow-labs/ai-vocab-video-generator` and the deployment branch.
+3. Set the entrypoint to `streamlit_app.py` and Python to `3.12`.
+4. Choose an available `*.streamlit.app` subdomain and deploy. No application
+   secrets are required.
+
+The cloud entrypoint intentionally differs from the trusted local launcher. It
+uses session-isolated temporary storage, ignores every server-side provider key,
+accepts at most five words per video and four remote candidates per word, and
+disables Ollama, custom endpoints, voice transcription, task history, and task
+regeneration. Visitors enter their own provider keys for the current browser
+session. Generated files disappear when the session or cloud instance ends, so
+download the MP4 before leaving. `packages.txt` installs FFmpeg and Noto CJK
+fonts on the cloud host.
 
 ### 4. Make a first video
 

@@ -64,6 +64,7 @@ from ai_vocab_video_generator.webui import (
 )
 
 WEBUI = Path(__file__).parents[1] / "src" / "ai_vocab_video_generator" / "webui.py"
+PUBLIC_WEBUI = Path(__file__).parents[1] / "streamlit_app.py"
 
 
 def _without_credentials(monkeypatch) -> None:
@@ -77,6 +78,48 @@ def _without_credentials(monkeypatch) -> None:
         "AIVVG_PIXABAY_API_KEY",
     ):
         monkeypatch.delenv(name, raising=False)
+
+
+def test_public_demo_is_session_isolated_and_never_uses_operator_keys(monkeypatch) -> None:
+    monkeypatch.setenv("AIVVG_OPENAI_API_KEY", "operator-secret")
+    monkeypatch.setenv("AIVVG_PEXELS_API_KEY", "operator-image-secret")
+
+    first = AppTest.from_file(str(PUBLIC_WEBUI)).run(timeout=15)
+    second = AppTest.from_file(str(PUBLIC_WEBUI)).run(timeout=15)
+
+    assert not first.exception
+    assert not second.exception
+    assert (
+        first.session_state["_public_demo_storage_dir"]
+        != second.session_state["_public_demo_storage_dir"]
+    )
+    assert "aivvg-public-demo" in first.session_state["_public_demo_storage_dir"]
+    assert first.text_input(key="llm_key_input").value == ""
+    assert first.selectbox(key="llm_preset").options == [
+        "OpenAI",
+        "DeepSeek",
+        "Moonshot",
+        "Qwen",
+    ]
+    assert first.text_input(key="llm_base_url").disabled
+    assert first.text_input(key="llm_model").disabled
+    assert first.number_input(key="word_count").value == 5
+    assert first.number_input(key="material_pool_size_widget").value == 4
+    assert not first.get("audio_input")
+    assert "重新生成已有任务" not in [item.label for item in first.expander]
+    assert any("公开体验版" in str(item.value) for item in first.info)
+
+    first.session_state["llm_base_url"] = "https://untrusted.example/v1"
+    first.session_state["llm_model"] = "untrusted-model"
+    first.run(timeout=15)
+    assert first.text_input(key="llm_base_url").value == "https://api.openai.com/v1"
+    assert first.text_input(key="llm_model").value == "gpt-5.6-terra"
+
+    six_words = "\n".join(f"单词{index}\nword{index}\n/word{index}/" for index in range(1, 7))
+    first.text_area(key="script_text").set_value(six_words).run(timeout=15)
+
+    assert any("最多支持 5 个单词" in str(item.value) for item in first.info)
+    assert next(button for button in first.button if button.label == "生成视频").disabled
 
 
 @pytest.mark.parametrize(

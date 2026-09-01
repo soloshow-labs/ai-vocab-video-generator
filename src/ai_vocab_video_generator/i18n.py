@@ -14,6 +14,24 @@ DEFAULT_LOCALE = Locale.ZH_CN
 _EN_US = {
     "title": "AI Vocab Video Generator",
     "caption": "Create narrated vocabulary learning videos.",
+    "public_demo_notice": (
+        "Public demo: temporary session-isolated storage, up to 5 words per video. "
+        "Enter your own provider keys and download the result before leaving; keys and "
+        "generated files are not retained after the session or server restarts."
+    ),
+    "public_demo_credentials_help": (
+        "This public demo never uses the operator's API keys. Keys entered here stay only "
+        "in your current browser session and are not written to task files."
+    ),
+    "public_demo_asr_disabled": (
+        "Voice input is unavailable in the public demo because its local ASR model exceeds "
+        "the free hosting budget. Enter the topic as text instead."
+    ),
+    "public_demo_word_limit": "The public demo supports at most {limit} words per video.",
+    "public_demo_busy": ("Another video is being generated. Please wait a moment and try again."),
+    "public_demo_result_help": (
+        "This result is temporary. Download the MP4 before closing the page."
+    ),
     "language": "Language",
     "basic_settings": "Basic Settings (:blue[click to expand])",
     "basic_settings_help": (
@@ -563,6 +581,21 @@ _EN_US = {
 _ZH_CN = {
     "title": "AI 单词视频生成器",
     "caption": "一键生成带朗读的单词学习视频。",
+    "public_demo_notice": (
+        "公开体验版：每个浏览器会话使用独立的临时存储，每段视频最多 5 个单词。"
+        "请填写你自己的服务商密钥，并在离开前下载结果；会话结束或服务器重启后，"
+        "密钥和生成文件都不会保留。"
+    ),
+    "public_demo_credentials_help": (
+        "公开体验版不会使用部署者的 API 密钥。你在这里填写的密钥只保留在当前浏览器"
+        "会话中，不会写入任务文件。"
+    ),
+    "public_demo_asr_disabled": (
+        "公开体验版不提供语音输入，因为本地 ASR 模型会超出免费托管资源；请直接输入文字主题。"
+    ),
+    "public_demo_word_limit": "公开体验版每段视频最多支持 {limit} 个单词。",
+    "public_demo_busy": "当前已有视频正在生成，请稍等片刻后重试。",
+    "public_demo_result_help": "该结果仅临时保留，请在关闭页面前下载 MP4。",
     "language": "语言",
     "basic_settings": "基础设置 (:blue[点击展开])",
     "basic_settings_help": (
