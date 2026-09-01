@@ -432,7 +432,11 @@ def test_public_package_and_git_metadata_use_project_identity() -> None:
     )
     emails = [line.strip() for line in result.stdout.splitlines() if line.strip()]
     assert emails
-    assert all(email.endswith("@users.noreply.github.com") for email in emails)
+    allowed_automation_emails = {"noreply@github.com"}
+    assert all(
+        email.endswith("@users.noreply.github.com") or email in allowed_automation_emails
+        for email in emails
+    )
 
 
 def test_public_docs_cover_the_complete_bilingual_media_workflow() -> None:
