@@ -82,7 +82,7 @@ cd ai-vocab-video-generator
 
 ### 1. Install the locked dependencies
 
-Choose one command according to whether you need the **Voice Input Topic**
+Choose one command according to whether you need the **Enter Topic by Voice**
 feature. You do not need to run both commands:
 
 ```bash
@@ -356,11 +356,11 @@ as well. Persistent failures still require checking your network or settings.
 ### Supported local media and rendering defaults
 
 All uploads are decoded before use. A matching filename extension alone does
-not make an invalid file acceptable. Local backgrounds and word images are limited
-to 32 MiB; remote image downloads remain limited to 10 MiB. All images are limited
-to 50 million decoded pixels. Local videos are limited to 128 MiB, five minutes,
-3840 pixels per dimension, and
-60 FPS, audio uploads to 32 MiB, and one generated timeline to one hour.
+not make an invalid file acceptable. Local backgrounds and word images are
+limited to 32 MiB, while remote image downloads are limited to 10 MiB. Decoded
+images may contain at most 50 million pixels. Local videos are limited to
+128 MiB, five minutes, 3840 pixels per dimension, and 60 FPS. Audio uploads are
+limited to 32 MiB, and a generated video timeline may be at most one hour long.
 
 The background uploader shows a 32 MB limit. Mixed image/video uploaders show
 128 MB, but images still have a 32 MiB limit; both limits are stated beside the
@@ -374,8 +374,8 @@ control. The uploader labels sizes as MB but measures them in MiB
 | Background music | `.mp3`, `.wav`, `.m4a`, `.aac`, and `.ogg` | Optional and user-provided only. |
 | Regeneration replacement | The same image and video types as local material | Load the task first, then choose a different word for each replacement file. |
 
-Pexels and Pixabay remain still-image providers; they never supply local video
-or music. Local video is looped or truncated to the card segment, begins at a
+Pexels and Pixabay are still-image providers; they do not supply video or music.
+Local video is looped or truncated to the card segment, begins at a
 deterministic saved offset, and its source audio is always removed.
 
 Unsplash is not currently integrated. Its API requires download tracking and
@@ -424,9 +424,9 @@ automatic search. Click a word to jump to its gallery without changing its image
 Pending automatic search is normal; you can generate without reviewing every word.
 Even if a search returns no results, you can upload material for that word.
 
-**Image search keywords** defaults to the current English word. For a more
-specific meaning, change `bank` to `river bank`, for example. Leave it blank to
-use the original word. Keywords affect image search only, not vocabulary,
+**Image search keywords** default to the current English word. For a more
+specific meaning, change `bank` to `river bank`, for example. Leave the field
+blank to use the original word. Keywords affect image search only, not vocabulary,
 on-screen text, or narration. Each word keeps its own keywords, which are also
 saved with the generated task for regeneration. Click **Search candidates**
 after editing. Your selected image or upload stays in place until you choose
@@ -443,11 +443,13 @@ Changing material size, position, shape, or fit keeps the selected image.
 Temporarily disabling materials or switching to local materials also preserves
 your remote choices for when you switch back. Changing the word, provider,
 candidate count, aspect ratio, or assignment mode resets the remote choices;
-editing only the search keywords does not. Uploading or removing an override, or changing
-visual settings, clears an outdated card preview; click **Preview** to update it.
+editing only the search keywords does not. Uploading or removing an override,
+or changing visual settings, clears an outdated card preview; click **Preview**
+to update it.
 
-If none fits, upload a local image or video beneath the gallery. This replaces
-only the current word's material; choosing a candidate switches back to remote.
+If none of the candidates fits, upload a local image or video beneath the
+gallery. This replaces only the current word's material; choosing a candidate
+switches back to remote.
 If a search or download fails, your previous selection is kept. Words you leave
 untouched still use automatic remote search during generation. No results?
 Upload your own material, or leave the word to use the neutral fallback.
@@ -559,18 +561,20 @@ composition always receives the next numbered MP4 and never overwrites an
 earlier completed video. Regeneration replacements accept the
 same supported local image and video formats as initial material uploads.
 
-## 中文快速说明
+## Quick reference
 
-- 界面默认使用简体中文 (`zh-CN`)，也可切换为英文 (`en-US`)。
-- 背景图支持 PNG、JPG/JPEG、WebP；本地单词素材还支持 MP4、MOV、M4V、WebM，
-  视频原声不会进入成片。
-- 帧率范围为 12–60，默认 24；素材可选择完整显示 (`contain`)、裁切填满
-  (`cover`，默认) 或拉伸 (`stretch`)，之后再应用圆形或矩形遮罩。
-- 背景音乐只能由用户上传，支持 MP3、WAV、M4A、AAC、OGG；可设置音量与朗读
-  压低比例。问题朗读有独立的开关、次数、声音、语速、音量和试听。
-- 远程素材支持逐词浏览候选、手动选图和本地覆盖；已选文件会保存到任务中，未操作的词条
-  仍在生成时自动搜索。
-- 每次成功重新生成都会保留旧 MP4 并新增编号文件；请妥善保存 32 位任务 ID。
+- The interface opens in Simplified Chinese (`zh-CN`) and can switch to English
+  (`en-US`).
+- Backgrounds support PNG, JPG/JPEG, and WebP. Local word materials also support
+  MP4, MOV, M4V, and WebM; source-video audio is never included in the result.
+- Output ranges from 12 to 60 FPS and defaults to 24. Materials can use `contain`,
+  `cover` (default), or `stretch` before a rectangle or circle mask is applied.
+- Background music is user-provided and supports MP3, WAV, M4A, AAC, and OGG.
+  Music volume, narration ducking, and independent question narration are configurable.
+- Remote materials support per-word candidate browsing, manual selection, and
+  local overrides. Unreviewed words continue to use automatic image search.
+- Every successful regeneration keeps earlier MP4 files and creates a numbered
+  version. Keep the corresponding 32-character task ID.
 
 ## Optional voice input
 
@@ -639,6 +643,14 @@ controls, use the full local application described above.
 
 Project maintainers can deploy this restricted demo at no hosting cost with
 [Streamlit Community Cloud](https://share.streamlit.io):
+
+For an organization-owned repository, an organization owner must first
+[grant Streamlit access to the organization](https://docs.streamlit.io/deploy/streamlit-community-cloud/get-started/connect-your-github-account#organization-access)
+and
+[allow deploy keys for the organization](https://docs.github.com/en/organizations/managing-organization-settings/restricting-deploy-keys-in-your-organization).
+GitHub disables new deploy keys for new organizations by default. After the app
+is connected, review **Repository Settings → Deploy keys** and confirm that the
+Streamlit key is read-only.
 
 1. Sign in with GitHub and choose **Create app**.
 2. Select `soloshow-labs/ai-vocab-video-generator` and the deployment branch.
