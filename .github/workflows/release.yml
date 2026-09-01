@@ -1,0 +1,129 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag matching pyproject.toml, for example v0.2.0"
+        required: true
+        type: string
+      draft:
+        description: "Create a draft release for review before publishing"
+        required: true
+        default: true
+        type: boolean
+      prerelease:
+        description: "Mark the release as a prerelease"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Run release checks
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  release:
+    name: Create GitHub release
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate release request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          default_branch="$(
+            gh repo view "$GITHUB_REPOSITORY" \
+              --json defaultBranchRef \
+              --jq '.defaultBranchRef.name'
+          )"
+          if [[ "$GITHUB_REF" != "refs/heads/${default_branch}" ]]; then
+            echo "::error::Run the release workflow from the default branch (${default_branch})."
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import tomllib
+
+          tag = os.environ["RELEASE_TAG"]
+          with pathlib.Path("pyproject.toml").open("rb") as file:
+              project_version = tomllib.load(file)["project"]["version"]
+
+          expected_tag = f"v{project_version}"
+          if tag != expected_tag:
+              raise SystemExit(
+                  f"Release tag {tag!r} does not match pyproject.toml version "
+                  f"{project_version!r}; expected {expected_tag!r}."
+              )
+          PY
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" \
+            >/dev/null 2>&1; then
+            echo "::error::Tag ${RELEASE_TAG} already exists."
+            exit 1
+          fi
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            >/dev/null 2>&1; then
+            echo "::error::Release ${RELEASE_TAG} already exists."
+            exit 1
+          fi
+
+      - name: Create release
+        env:
+          CREATE_DRAFT: ${{ inputs.draft }}
+          GH_TOKEN: ${{ github.token }}
+          IS_PRERELEASE: ${{ inputs.prerelease }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          release_options=(
+            --repo "$GITHUB_REPOSITORY"
+            --target "$GITHUB_SHA"
+            --title "$RELEASE_TAG"
+            --generate-notes
+            --fail-on-no-commits
+          )
+
+          if [[ "$CREATE_DRAFT" == "true" ]]; then
+            release_options+=(--draft)
+          fi
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            release_options+=(--prerelease)
+          fi
+
+          gh release create "$RELEASE_TAG" "${release_options[@]}"
+
+          release_url="$(
+            gh release view "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --json url \
+              --jq '.url'
+          )"
+          {
+            echo "## Release created"
+            echo
+            echo "- Tag: \`$RELEASE_TAG\`"
+            echo "- Draft: \`$CREATE_DRAFT\`"
+            echo "- Prerelease: \`$IS_PRERELEASE\`"
+            echo "- URL: $release_url"
+          } >> "$GITHUB_STEP_SUMMARY"
