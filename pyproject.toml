@@ -44,7 +44,7 @@ Documentation = "https://github.com/soloshow-labs/ai-vocab-video-generator#readm
 
 [dependency-groups]
 dev = [
-  "mypy>=1.11,<2",
+  "mypy>=1.11,<3",
   "pip-audit>=2.10,<3",
   "pytest>=8.3,<10",
   "pytest-cov>=5,<8",
