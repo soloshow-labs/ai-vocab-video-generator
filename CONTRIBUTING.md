@@ -37,3 +37,23 @@ uv sync --extra asr
 
 Keep pull requests focused. In the description, explain the user-visible
 behavior, how the change was verified, and any licensing implications.
+
+## Releasing
+
+Releases are created manually through the `Release` GitHub Actions workflow:
+
+1. Update `project.version` in `pyproject.toml` and finish the corresponding
+   changelog entry.
+2. Merge the release changes into the default branch and confirm that CI is
+   passing.
+3. Open **Actions → Release → Run workflow**, select the default branch, and
+   enter the matching `vX.Y.Z` tag.
+4. Keep **Create a draft release** enabled. The workflow reruns the complete CI
+   suite before it creates the tag and draft GitHub Release.
+5. Review the generated release notes, then publish the draft from the GitHub
+   Releases page.
+
+The workflow intentionally publishes a source release only. GitHub provides the
+source ZIP and TAR.GZ automatically; it does not build desktop installers or
+publish to PyPI. Existing tags and releases are rejected to prevent accidental
+replacement.

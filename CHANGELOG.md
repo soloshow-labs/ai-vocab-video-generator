@@ -18,6 +18,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Optional FunASR topic transcription on Python 3.11 and 3.12.
 - Loopback-only launchers, isolated task storage, secret scanning, dependency
   auditing, and release archive checks.
+- A manually triggered GitHub Actions workflow that reruns the complete CI
+  suite before creating a version-checked draft source release.
 
 ### Changed
 
