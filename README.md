@@ -1,6 +1,6 @@
 # AI Vocab Video Generator
 
-English | [中文](README.zh.md)
+English | [中文](README.zh.md) | [Live Demo](https://ai-vocab-video-generator.streamlit.app/)
 
 Turn a topic or an editable word list into a narrated English vocabulary video.
 This local Streamlit app supports Simplified Chinese and English, opens in
@@ -14,6 +14,12 @@ WeChat Official Account: 一人独角show
 > This guide describes the **full local application** unless a section is
 > explicitly labeled “Restricted public demo.” The hosted demo is only a quick
 > way to try the project and is not a replacement for local installation.
+
+> **Live Demo:** [Open the hosted app](https://ai-vocab-video-generator.streamlit.app/).
+> The first visit may take a few minutes while the free instance wakes from
+> sleep. Use a dedicated API key with a low spending limit and only the
+> permissions you need. The app does not persist keys entered in the UI, but no
+> public hosting environment can guarantee zero risk.
 
 ## What it does
 
@@ -627,9 +633,10 @@ repository.
 
 ## Restricted public demo
 
-The hosted demo is meant only to let visitors try the core workflow. For regular
-video production, persistent jobs, local models, and the complete set of advanced
-controls, use the full local application described above.
+The [hosted demo](https://ai-vocab-video-generator.streamlit.app/) is meant only
+to let visitors try the core workflow. For regular video production, persistent
+jobs, local models, and the complete set of advanced controls, use the full local
+application described above.
 
 | Area | Full local application | Hosted public demo |
 | --- | --- | --- |
