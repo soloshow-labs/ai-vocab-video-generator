@@ -14,6 +14,7 @@ DEFAULT_LOCALE = Locale.ZH_CN
 _EN_US = {
     "title": "AI Vocab Video Generator",
     "caption": "Create narrated vocabulary learning videos.",
+    "github_repository": "View project on GitHub",
     "public_demo_notice": (
         "Public demo: temporary session-isolated storage, up to 5 words per video. "
         "Enter your own provider keys and download the result before leaving; keys and "
@@ -584,6 +585,7 @@ _EN_US = {
 _ZH_CN = {
     "title": "AI 单词视频生成器",
     "caption": "一键生成带朗读的单词学习视频。",
+    "github_repository": "在 GitHub 查看项目",
     "public_demo_notice": (
         "公开体验版：每个浏览器会话使用独立的临时存储，每段视频最多 5 个单词。"
         "请填写你自己的服务商密钥，并在离开前下载结果；密钥仅保留在当前会话，"

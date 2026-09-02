@@ -545,6 +545,32 @@ def test_webui_defaults_to_simplified_chinese_and_restores_section_order(monkeyp
     assert sum(item.label == "启用" for item in app.checkbox) == 6
 
 
+@pytest.mark.parametrize(
+    ("locale", "accessible_label"),
+    [
+        ("zh-CN", "在 GitHub 查看项目"),
+        ("en-US", "View project on GitHub"),
+    ],
+)
+def test_header_links_to_github_repository_in_a_new_tab(
+    monkeypatch, locale: str, accessible_label: str
+) -> None:
+    _without_credentials(monkeypatch)
+    app = AppTest.from_file(str(WEBUI))
+    app.session_state["locale"] = locale
+
+    app.run(timeout=15)
+
+    assert not app.exception
+    github_link = next(
+        item.value for item in app.markdown if 'class="aivvg-github-link"' in item.value
+    )
+    assert 'href="https://github.com/soloshow-labs/ai-vocab-video-generator"' in github_link
+    assert f'aria-label="{accessible_label}"' in github_link
+    assert 'target="_blank"' in github_link
+    assert 'rel="noopener noreferrer"' in github_link
+
+
 def test_chinese_controls_keep_specific_section_names_instead_of_generic_labels(
     monkeypatch,
 ) -> None:
