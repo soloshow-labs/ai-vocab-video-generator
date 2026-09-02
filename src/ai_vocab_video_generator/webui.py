@@ -12,6 +12,7 @@ import threading
 from collections.abc import Sequence
 from contextlib import suppress
 from datetime import datetime
+from html import escape
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 from urllib.parse import urlparse
@@ -112,6 +113,7 @@ _PUBLIC_DEMO_MAX_MATERIAL_CANDIDATES = 4
 _PUBLIC_DEMO_STORAGE_BUDGET_BYTES = 1024 * MIB
 _PUBLIC_DEMO_MIN_FREE_BYTES = 512 * MIB
 _PUBLIC_DEMO_GENERATION_LOCK = threading.Lock()
+_GITHUB_REPOSITORY_URL = "https://github.com/soloshow-labs/ai-vocab-video-generator"
 
 _APP_STYLES = """
 <style>
@@ -137,6 +139,40 @@ _APP_STYLES = """
     overflow: visible;
     padding-top: 0.2rem;
     padding-bottom: 0.35rem;
+}
+.aivvg-github-link-wrapper {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    min-height: 4rem;
+}
+.aivvg-github-link {
+    align-items: center;
+    border: 1px solid rgba(128, 128, 128, 0.35);
+    border-radius: 999px;
+    color: inherit !important;
+    display: inline-flex;
+    height: 2.75rem;
+    justify-content: center;
+    text-decoration: none !important;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease,
+        transform 120ms ease;
+    width: 2.75rem;
+}
+.aivvg-github-link:hover {
+    background: rgba(255, 75, 75, 0.08);
+    border-color: #ff4b4b;
+    color: #ff4b4b !important;
+    transform: translateY(-1px);
+}
+.aivvg-github-link:focus-visible {
+    outline: 3px solid rgba(0, 104, 201, 0.35);
+    outline-offset: 2px;
+}
+.aivvg-github-link svg {
+    fill: currentColor;
+    height: 1.6rem;
+    width: 1.6rem;
 }
 [data-testid="stVerticalBlockBorderWrapper"] {
     border-radius: 0.5rem;
@@ -167,6 +203,10 @@ span.stMarkdownColoredText[style*="0, 84, 163"] {
     [data-testid="stMainBlockContainer"] {
         padding-top: 1.25rem;
     }
+    .aivvg-github-link-wrapper {
+        justify-content: flex-start;
+        min-height: auto;
+    }
 }
 </style>
 """
@@ -180,6 +220,40 @@ class UploadedData(Protocol):
 
 def _t(locale: Locale, key: str) -> str:
     return translate(locale, key)
+
+
+def _render_header(locale: Locale) -> None:
+    title_column, repository_column = st.columns([12, 1], vertical_alignment="center")
+    with title_column:
+        st.title(f"{_t(locale, 'title')} v{__version__}")
+    with repository_column:
+        accessible_label = escape(_t(locale, "github_repository"), quote=True)
+        st.markdown(
+            f"""
+            <div class="aivvg-github-link-wrapper">
+              <a class="aivvg-github-link"
+                 href="{_GITHUB_REPOSITORY_URL}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 aria-label="{accessible_label}"
+                 title="{accessible_label}">
+                <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59
+                    .4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94
+                    -.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58
+                    1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2
+                    -3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12
+                    0 0 .67-.21 2.2.82A7.65 7.65 0 0 1 8 3.91c.68 0 1.36.09 2 .27
+                    1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27
+                    .82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
+                    0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8
+                    c0-4.42-3.58-8-8-8Z"/>
+                </svg>
+              </a>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 _PROGRESS_TRANSLATION_KEYS = {
@@ -1678,7 +1752,7 @@ def main(*, public_demo: bool = False) -> None:
     if isinstance(pending_request, GenerationRequest) and isinstance(pending_job_id, str):
         _load_request_into_state(pending_request, pending_job_id)
     locale = Locale(str(st.session_state.get("locale", DEFAULT_LOCALE.value)))
-    st.title(f"{_t(locale, 'title')} v{__version__}")
+    _render_header(locale)
     st.caption(_t(locale, "caption"))
     if public_demo:
         st.info(_t(locale, "public_demo_notice"))

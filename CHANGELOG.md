@@ -20,6 +20,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   auditing, and release archive checks.
 - A manually triggered GitHub Actions workflow that reruns the complete CI
   suite before creating a version-checked draft source release.
+- A compact GitHub repository link in the application header with bilingual
+  accessible labels and safe new-tab navigation.
 
 ### Changed
 
