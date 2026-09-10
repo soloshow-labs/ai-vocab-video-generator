@@ -8,7 +8,7 @@ Simplified Chinese by default, and lets you customize the layout, media,
 typography, progress indicators, and narration.
 
 <p align="center">
-  <img src="docs/assets/webui-en.jpg" alt="AI Vocab Video Generator English interface" width="656">
+  <img src="docs/assets/webui-en.jpg" alt="AI Vocab Video Generator English interface">
 </p>
 
 Maintained by [SoloShow Labs](https://github.com/soloshow-labs).
