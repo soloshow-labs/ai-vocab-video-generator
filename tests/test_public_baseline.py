@@ -350,6 +350,8 @@ def test_public_candidate_baseline_contains_no_private_inputs_or_generated_media
     }
     forbidden_roots = {"storage", "model_cache", "models", "logs", "user_assets"}
     allowed_project_media = {
+        Path("docs/assets/webui-en.jpg"),
+        Path("docs/assets/webui-zh.jpg"),
         Path("src/ai_vocab_video_generator/assets/countdown1.wav"),
     }
 
