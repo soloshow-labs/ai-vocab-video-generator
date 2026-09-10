@@ -6,6 +6,10 @@
 Streamlit 界面支持简体中文和 English，默认使用简体中文；布局、素材、字体、
 进度条和朗读方式均可自定义。
 
+<p align="center">
+  <img src="docs/assets/webui-zh.jpg" alt="AI 单词视频生成器中文界面" width="656">
+</p>
+
 项目由 [SoloShow Labs（一人独角show）](https://github.com/soloshow-labs) 维护。
 
 微信公众号：一人独角show
